@@ -7,7 +7,7 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app, resources={r"/*": {"origins": ["https://frontend-angular-pi.vercel.app", "http://localhost:4200"]}})
+CORS(app, resources={r"/*": {"origins": ["https://frontend-angular-pi.vercel.app/", "http://localhost:4200"]}})
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
