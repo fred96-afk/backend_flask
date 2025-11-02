@@ -10,12 +10,13 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     && echo "Dependencias de sistema instaladas"
 
-# 2. Registrar la clave GPG de Microsoft (método moderno, apt-key está obsoleto)
+# 2. Registrar la clave GPG de Microsoft
 RUN mkdir -p /usr/share/keyrings \
     && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
 
 # 3. Registrar el repositorio de Microsoft, indicando dónde está la clave
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/config/debian/12/prod main" > /etc/apt/sources.list.d/mssql-release.list
+# --- ESTA ES LA LÍNEA QUE SE CORRIGIÓ ---
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod stable main" > /etc/apt/sources.list.d/mssql-release.list
 
 # 4. Instalar el driver (y limpiar la caché)
 RUN apt-get update \
@@ -29,7 +30,6 @@ RUN apt-get update \
 WORKDIR /app
 
 # Copy and install Python requirements
-# El driver ODBC debe estar instalado ANTES de pip install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
