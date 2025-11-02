@@ -84,7 +84,7 @@ def create_product(current_user):
 @app.route('/products', methods=['GET'])
 def get_products():
     products = Product.query.all()
-    return jsonify([{'id': p.id, 'name': p.name, 'price': p.price, 'description': p.description, 'offer_price': p.offer_price, 'category': p.category.name, 'image_url': url_for('uploaded_file', filename=p.image_filename, _external=True) if p.image_filename else None} for p in products])
+    return jsonify([{'id': p.id, 'name': p.name, 'price': p.price, 'description': p.description, 'offer_price': p.offer_price, 'category': p.category.name if p.category else None, 'image_url': url_for('uploaded_file', filename=p.image_filename, _external=True) if p.image_filename else None} for p in products])
 
 @app.route('/categories', methods=['GET'])
 def get_categories():
