@@ -1,7 +1,7 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# --- NUEVO: Instalar el driver ODBC de SQL Server ---
+# --- INICIO DE SECCIÓN MODIFICADA ---
 # 1. Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     curl \
@@ -10,18 +10,19 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     && echo "Dependencias de sistema instaladas"
 
-# 2. Registrar la clave GPG de Microsoft
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+# 2. Registrar la clave GPG de Microsoft (método moderno, apt-key está obsoleto)
+RUN mkdir -p /usr/share/keyrings \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
 
-# 3. Registrar el repositorio de Microsoft para Debian 12 (la base de python:3.11-slim)
-RUN curl https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list
+# 3. Registrar el repositorio de Microsoft, indicando dónde está la clave
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/config/debian/12/prod main" > /etc/apt/sources.list.d/mssql-release.list
 
 # 4. Instalar el driver (y limpiar la caché)
 RUN apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
-# --- FIN DE SECCIÓN NUEVA ---
+# --- FIN DE SECCIÓN MODIFICADA ---
 
 
 # Set the working directory in the container
@@ -38,9 +39,5 @@ COPY . .
 # Make port 5000 available (Gunicorn usará este puerto)
 EXPOSE 5000
 
-# --- MODIFICADO: Usar Gunicorn para producción ---
-# Los ENV FLASK_APP y FLASK_RUN_HOST ya no son necesarios
-# El comando CMD ["flask", "run"] es SOLO para desarrollo.
-# Usamos gunicorn para producción:
-# (Asegúrate de agregar 'gunicorn' a tu requirements.txt)
+# Usamos gunicorn para producción
 CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "main:app"]
