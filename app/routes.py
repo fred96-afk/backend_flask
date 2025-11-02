@@ -1,9 +1,11 @@
-from flask import jsonify, request
+from flask import jsonify, request, url_for, send_from_directory
 from main import app, db
 from app.models import User, Product, Category
 import jwt
 import datetime
 from functools import wraps
+import os
+from werkzeug.utils import secure_filename
 
 
 def token_required(f):
@@ -56,18 +58,27 @@ def protected(current_user):
 @app.route('/products', methods=['GET'])
 def get_products():
     products = Product.query.all()
-    return jsonify([{'id': p.id, 'name': p.name, 'price': p.price, 'category': p.category.name} for p in products])
+    return jsonify([{'id': p.id, 'name': p.name, 'price': p.price, 'category': p.category.name, 'image_url': url_for('uploaded_file', filename=p.image_filename, _external=True) if p.image_filename else None} for p in products])
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/products', methods=['POST'])
 @token_required
 def create_product(current_user):
-    data = request.get_json() or {}
-    if 'name' not in data or 'price' not in data or 'category_id' not in data:
+    if 'name' not in request.form or 'price' not in request.form or 'category_id' not in request.form:
         return jsonify({'message': 'must include name, price and category_id fields'}), 400
-    category = Category.query.get(data['category_id'])
+    category = Category.query.get(request.form['category_id'])
     if not category:
         return jsonify({'message': 'category not found'}), 404
-    product = Product(name=data['name'], price=data['price'], category=category)
+    image_filename = None
+    if 'image' in request.files:
+        image = request.files['image']
+        if image.filename != '':
+            image_filename = secure_filename(image.filename)
+            image.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+    product = Product(name=request.form['name'], price=request.form['price'], category=category, image_filename=image_filename)
     db.session.add(product)
     db.session.commit()
     return jsonify({'message': 'product created successfully'}), 201
