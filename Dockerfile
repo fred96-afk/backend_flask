@@ -10,13 +10,13 @@ RUN apt-get update && apt-get install -y \
     apt-transport-https \
     && echo "Dependencias de sistema instaladas"
 
-# 2. Registrar la clave GPG de Microsoft
+# 2. Registrar la clave GPG de Microsoft (con el nombre de archivo oficial)
 RUN mkdir -p /usr/share/keyrings \
-    && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+    && curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
 
-# 3. Registrar el repositorio de Microsoft, indicando dónde está la clave
+# 3. Registrar el repositorio de Microsoft (usando 'bookworm' en lugar de 'stable')
 # --- ESTA ES LA LÍNEA QUE SE CORRIGIÓ ---
-RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod stable main" > /etc/apt/sources.list.d/mssql-release.list
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 
 # 4. Instalar el driver (y limpiar la caché)
 RUN apt-get update \
