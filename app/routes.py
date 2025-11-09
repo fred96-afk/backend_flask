@@ -1,4 +1,4 @@
-from flask import jsonify, request, url_for, send_from_directory
+from flask import jsonify, request, url_for
 from main import app, db
 from app.models import User, Product, Category, Banner, Order, OrderItem
 import jwt
@@ -6,6 +6,9 @@ import datetime
 from functools import wraps
 import os
 from werkzeug.utils import secure_filename
+import cloudinary
+import cloudinary.uploader
+
 
 
 def token_required(f):
@@ -61,14 +64,12 @@ def create_product(current_user):
     if 'name' not in request.form or 'price' not in request.form or 'category_id' not in request.form:
         return jsonify({'message': 'must include name, price and category_id fields'}), 400
     category = Category.query.get(request.form['category_id'])
-    if not category:
-        return jsonify({'message': 'category not found'}), 404
     image_filename = None
     if 'image' in request.files:
         image = request.files['image']
         if image.filename != '':
-            image_filename = secure_filename(image.filename)
-            image.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+            upload_result = cloudinary.uploader.upload(image)
+            image_filename = upload_result['secure_url']
     product = Product(
         name=request.form['name'], 
         price=request.form['price'], 
@@ -84,7 +85,7 @@ def create_product(current_user):
 @app.route('/products', methods=['GET'])
 def get_products():
     products = Product.query.all()
-    return jsonify([{'id': p.id, 'name': p.name, 'price': p.price, 'description': p.description, 'offer_price': p.offer_price, 'category': p.category.name if p.category else None, 'image_url': url_for('uploaded_file', filename=p.image_filename, _external=True) if p.image_filename else None} for p in products])
+    return jsonify([{'id': p.id, 'name': p.name, 'price': p.price, 'description': p.description, 'offer_price': p.offer_price, 'category': p.category.name if p.category else None, 'image_url': p.image_filename if p.image_filename else None} for p in products])
 
 @app.route('/categories', methods=['GET'])
 def get_categories():
@@ -111,8 +112,8 @@ def create_banner(current_user):
     if 'image' in request.files:
         image = request.files['image']
         if image.filename != '':
-            image_filename = secure_filename(image.filename)
-            image.save(os.path.join(app.config['UPLOAD_FOLDER'], image_filename))
+            upload_result = cloudinary.uploader.upload(image)
+            image_filename = upload_result['secure_url']
     banner = Banner(
         title=request.form['title'], 
         link=request.form['link'], 
@@ -125,7 +126,7 @@ def create_banner(current_user):
 @app.route('/banners', methods=['GET'])
 def get_banners():
     banners = Banner.query.all()
-    return jsonify([{'id': b.id, 'title': b.title, 'link': b.link, 'image_url': url_for('uploaded_file', filename=b.image_filename, _external=True) if b.image_filename else None} for b in banners])
+    return jsonify([{'id': b.id, 'title': b.title, 'link': b.link, 'image_url': b.image_filename if b.image_filename else None} for b in banners])
 
 @app.route('/orders', methods=['POST'])
 @token_required
@@ -156,9 +157,6 @@ def create_order(current_user):
     db.session.commit()
     return jsonify({'message': 'order created successfully'}), 201
 
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/orders', methods=['GET'])
 @token_required
